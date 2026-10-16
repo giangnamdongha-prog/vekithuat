@@ -151,6 +151,7 @@
                 <div id="cadHud" class="absolute top-2 left-2 bg-slate-900/90 border border-indigo-500/50 rounded px-2 py-0.5 text-[10px] font-mono shadow text-indigo-300 pointer-events-none flex items-center gap-2 z-10">
                     <span>X: <span id="hudX">0</span>, Y: <span id="hudY">0</span></span>
                     <span>Lệnh: <span id="hudCmd" class="text-emerald-400 font-bold">SELECT/MOVE</span></span>
+                    <span id="hudRealtime" class="text-amber-300 font-bold hidden"></span>
                 </div>
             </div>
         </div>
@@ -238,6 +239,7 @@
 
         let editingTitleField = null;
         const cadFontSize = document.getElementById('cadFontSize');
+        const hudRealtime = document.getElementById('hudRealtime');
 
         const hudX = document.getElementById('hudX');
         const hudY = document.getElementById('hudY');
@@ -466,6 +468,40 @@
             ctx.restore();
         }
 
+        // Vẽ đường gióng và đường kích thước tự động (Extension lines & Dimension text)
+        function drawExtensionAndDimension(x1, y1, x2, y2, text, color) {
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 1;
+            ctx.setLineDash([2, 2]);
+
+            // Tính góc và khoảng cách vuông góc để vẽ đường gióng
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 2) {
+                ctx.restore();
+                return;
+            }
+
+            // Vẽ text kích thước ở trung điểm đoạn thẳng
+            const midX = (x1 + x2) / 2;
+            const midY = (y1 + y2) / 2;
+
+            ctx.font = '11px Inter, monospace';
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillRect(midX - 18, midY - 10, 36, 18);
+            ctx.strokeStyle = '#38bdf8';
+            ctx.strokeRect(midX - 18, midY - 10, 36, 18);
+            ctx.fillStyle = '#0f172a';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, midX, midY - 1);
+
+            ctx.restore();
+        }
+
         function fitToScreen() {
             const containerW = canvasScrollContainer.clientWidth - 30;
             const containerH = canvasScrollContainer.clientHeight - 30;
@@ -638,7 +674,6 @@
 
             if (checkTitleBlockClick(startX, startY)) return;
 
-            // Click chuột phải (e.button === 2) để xóa đối tượng trên máy tính
             if (e.button === 2) {
                 e.preventDefault();
                 for (let i = cadElements.length - 1; i >= 0; i--) {
@@ -668,6 +703,7 @@
                     }
                 }
                 redrawAll();
+                hudRealtime.classList.add('hidden');
                 return;
             }
 
@@ -678,6 +714,7 @@
                 document.getElementById('textInput').value = '';
                 document.getElementById('textModal').classList.remove('hidden');
                 document.getElementById('textInput').focus();
+                hudRealtime.classList.add('hidden');
                 return;
             }
 
@@ -726,20 +763,36 @@
                 ctx.moveTo(startX, startY);
                 ctx.lineTo(currentX, currentY);
                 ctx.stroke();
+                
+                const lengthPx = Math.round(Math.sqrt(Math.pow(currentX - startX, 2) + Math.pow(currentY - startY, 2)));
+                hudRealtime.textContent = `L = ${lengthPx}mm`;
+                hudRealtime.classList.remove('hidden');
+
                 if (currentTool === 'dim') {
                     drawDimensionArrow(startX, startY, currentX, currentY, cadColor.value);
                 }
+                drawExtensionAndDimension(startX, startY, currentX, currentY, `${lengthPx}`, cadColor.value);
             } else if (currentTool === 'rect') {
+                const w = Math.round(Math.abs(currentX - startX));
+                const h = Math.round(Math.abs(currentY - startY));
                 ctx.strokeRect(startX, startY, currentX - startX, currentY - startY);
+
+                hudRealtime.textContent = `${w} x ${h}mm`;
+                hudRealtime.classList.remove('hidden');
+                drawExtensionAndDimension(startX, startY, currentX, startY, `${w}x${h}`, cadColor.value);
             } else if (currentTool === 'circle') {
-                const radius = Math.sqrt(Math.pow(currentX - startX, 2) + Math.pow(currentY - startY, 2));
+                const radius = Math.round(Math.sqrt(Math.pow(currentX - startX, 2) + Math.pow(currentY - startY, 2)));
                 ctx.beginPath();
                 ctx.arc(startX, startY, radius, 0, 2 * Math.PI);
                 ctx.stroke();
+
+                hudRealtime.textContent = `R = ${radius}mm (Ø${radius * 2})`;
+                hudRealtime.classList.remove('hidden');
             }
         }
 
         function stopAction(e) {
+            hudRealtime.classList.add('hidden');
             if (currentTool === 'select') {
                 isDraggingObject = false;
                 return;
@@ -854,14 +907,47 @@
         // Nút lưu và tải xuống bản vẽ về điện thoại / máy tính để nộp cho thầy
         saveBtn.addEventListener('click', () => {
             redrawAll();
-            const link = document.createElement('a');
             const studentName = (titleBlockData['1_prime'] || 'hoc-sinh').replace(/\s+/g, '-');
-            link.download = `ban-ve-cad-${studentName}.png`;
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-            logCmd('Đã tải thành công bản vẽ về máy để nộp cho thầy!', 'success');
-            showModal('Tải Bản Vẽ Thành Công!', 'File ảnh bản vẽ (PNG) đã được lưu về điện thoại/máy tính của em. Em có thể gửi file này cho thầy để nộp bài tập.');
+            const fileName = `ban-ve-cad-${studentName}.png`;
+
+            // Sử dụng canvas.toBlob để hỗ trợ tốt nhất trên các dòng điện thoại iOS (Safari) và Android (Chrome)
+            canvas.toBlob((blob) => {
+                if (!blob) {
+                    showModal('Lỗi', 'Không thể tạo file ảnh. Vui lòng thử lại.');
+                    return;
+                }
+
+                // Kiểm tra xem trình duyệt có hỗ trợ Web Share API (chia sẻ tệp trực tiếp trên Mobile) không
+                if (navigator.canShare && navigator.canShare({ files: [new File([blob], fileName, { type: 'image/png' })] })) {
+                    const file = new File([blob], fileName, { type: 'image/png' });
+                    navigator.share({
+                        files: [file],
+                        title: 'Bản vẽ kỹ thuật TCVN',
+                        text: 'Nộp bài tập bản vẽ kỹ thuật CAD'
+                    }).then(() => {
+                        logCmd('Đã chia sẻ/tải bản vẽ thành công!', 'success');
+                    }).catch((error) => {
+                        // Người dùng hủy chia sẻ thì fallback sang tải file thông thường
+                        downloadBlobFallback(blob, fileName);
+                    });
+                } else {
+                    downloadBlobFallback(blob, fileName);
+                }
+            }, 'image/png');
         });
+
+        function downloadBlobFallback(blob, fileName) {
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = fileName;
+            link.href = url;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            logCmd('Đã tải thành công bản vẽ về máy để nộp cho thầy!', 'success');
+            showModal('Tải Bản Vẽ Thành Công!', 'File ảnh bản vẽ (PNG) đã được lưu về điện thoại/máy tính của em. Em có thể mở Thư viện/Album ảnh để gửi cho thầy.');
+        }
 
         function showModal(title, message, isConfirm = false, onConfirm = null) {
             const modal = document.getElementById('customModal');
