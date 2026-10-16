@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Phòng Thực Hành Bản Vẽ Kỹ Thuật CAD & TCVN</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            touch-action: none;
+            user-select: none;
+            overscroll-behavior: none;
+        }
+        .canvas-scroll-container::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .canvas-scroll-container::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        .canvas-scroll-container::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        .cad-dark {
+            background-color: #0b0f19;
+            color: #f8fafc;
+        }
+        .cad-border {
+            border-color: #1e293b;
+        }
+    </style>
+</head>
+<body class="cad-dark w-screen h-screen flex flex-col justify-between p-2 overflow-hidden">
+
+    <header class="w-full flex flex-col sm:flex-row items-center justify-between pb-1.5 border-b cad-border gap-2 shrink-0">
+        <div class="flex items-center gap-2">
+            <div class="bg-indigo-600 p-1.5 rounded-lg text-white shadow">
+                <i class="fa-solid fa-compass-drafting text-sm"></i>
+            </div>
+            <div>
+                <h1 class="text-xs sm:text-sm font-extrabold tracking-wide text-indigo-400 flex items-center gap-1.5">
+                    TCVN CAD STUDIO <span class="text-[9px] bg-slate-800 text-indigo-300 px-1.5 py-0.5 rounded border cad-border font-mono">v3.3 TCVN 7285</span>
+                </h1>
+                <p class="text-[10px] text-slate-400 hidden sm:block">Mô phỏng bản vẽ CAD & Khung tên TCVN 7285:2003</p>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-1.5 text-xs">
+            <div class="flex items-center gap-1 bg-slate-900 px-2 py-0.5 rounded border cad-border">
+                <span class="text-slate-400 text-[11px]">Khổ:</span>
+                <select id="paperSize" class="bg-slate-950 text-indigo-300 border-none text-[11px] font-semibold outline-none cursor-pointer">
+                    <option value="A4">A4 (840x594)</option>
+                    <option value="A3" selected>A3 (1188x840)</option>
+                    <option value="A2">A2 (1680x1188)</option>
+                </select>
+            </div>
+
+            <div class="flex items-center gap-1 bg-slate-900 px-2 py-0.5 rounded border cad-border">
+                <span class="text-slate-400 text-[11px]">Tỷ lệ:</span>
+                <select id="scaleSelect" class="bg-slate-950 text-indigo-300 border-none text-[11px] font-semibold outline-none cursor-pointer">
+                    <option value="1">1:1</option>
+                    <option value="2">2:1</option>
+                    <option value="0.5">1:2</option>
+                </select>
+            </div>
+
+            <div class="flex items-center gap-1 bg-slate-900 px-2 py-0.5 rounded border cad-border">
+                <label for="gridToggle" class="flex items-center gap-1 cursor-pointer text-slate-300 hover:text-white text-[11px]">
+                    <input type="checkbox" id="gridToggle" checked class="rounded text-indigo-600 focus:ring-0">
+                    Lưới
+                </label>
+            </div>
+        </div>
+    </header>
+
+    <main class="w-full flex flex-col flex-grow my-1.5 gap-1.5 overflow-hidden">
+        <div class="flex flex-wrap items-center justify-between gap-1.5 bg-slate-900/90 p-1.5 rounded-lg border cad-border shadow-lg shrink-0">
+            
+            <div class="flex flex-wrap items-center gap-1">
+                <div class="flex items-center gap-1 bg-slate-950/80 p-0.5 rounded border cad-border">
+                    <button id="toolSelect" title="Chọn & Di chuyển" class="tool-btn px-2 py-1 rounded text-xs bg-indigo-600 text-white font-medium transition flex items-center gap-1">
+                        <i class="fa-solid fa-arrow-pointer"></i> <span class="hidden md:inline">Chọn</span>
+                    </button>
+                    <button id="toolLine" title="Line" class="tool-btn px-2 py-1 rounded text-xs text-slate-300 hover:bg-slate-800 font-medium transition flex items-center gap-1">
+                        <i class="fa-solid fa-slash"></i> Line
+                    </button>
+                    <button id="toolRect" title="Rectangle" class="tool-btn px-2 py-1 rounded text-xs text-slate-300 hover:bg-slate-800 font-medium transition flex items-center gap-1">
+                        <i class="fa-regular fa-square"></i> Rect
+                    </button>
+                    <button id="toolCircle" title="Circle" class="tool-btn px-2 py-1 rounded text-xs text-slate-300 hover:bg-slate-800 font-medium transition flex items-center gap-1">
+                        <i class="fa-regular fa-circle"></i> Circle
+                    </button>
+                    <button id="toolDim" title="Dimension" class="tool-btn px-2 py-1 rounded text-xs text-slate-300 hover:bg-slate-800 font-medium transition flex items-center gap-1">
+                        <i class="fa-solid fa-ruler-horizontal"></i> Dim
+                    </button>
+                    <button id="toolText" title="Text" class="tool-btn px-2 py-1 rounded text-xs text-slate-300 hover:bg-slate-800 font-medium transition flex items-center gap-1">
+                        <i class="fa-solid fa-font"></i> Text
+                    </button>
+                    <button id="deleteSelectedBtn" title="Xóa đối tượng đang chọn trên điện thoại" class="tool-btn px-2 py-1 rounded text-xs text-rose-300 hover:bg-rose-950 font-medium transition flex items-center gap-1 border border-rose-900/50">
+                        <i class="fa-solid fa-trash-can"></i> <span class="hidden md:inline">Xóa chọn</span>
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-1 bg-slate-950/80 px-2 py-0.5 rounded border cad-border text-xs">
+                    <select id="cadLineType" class="bg-slate-900 text-slate-200 border cad-border rounded px-1 py-0.5 outline-none text-[11px] font-semibold">
+                        <option value="solid-thick" selected>Nét đậm (Cạnh thấy)</option>
+                        <option value="solid-thin">Nét mảnh (Gióng)</option>
+                        <option value="dashed">Nét đứt (Khuất)</option>
+                        <option value="dash-dot">Nét chấm gạch (Trục)</option>
+                    </select>
+                    <!-- Thêm lựa chọn cỡ chữ -->
+                    <select id="cadFontSize" class="bg-slate-900 text-indigo-300 border cad-border rounded px-1 py-0.5 outline-none text-[11px] font-semibold" title="Cỡ chữ">
+                        <option value="10">10px</option>
+                        <option value="11">11px</option>
+                        <option value="12">12px</option>
+                        <option value="14">14px</option>
+                        <option value="16" selected>16px</option>
+                        <option value="18">18px</option>
+                        <option value="20">20px</option>
+                        <option value="24">24px</option>
+                        <option value="28">28px</option>
+                        <option value="32">32px</option>
+                    </select>
+                    <input type="color" id="cadColor" value="#38bdf8" class="w-5 h-5 rounded bg-transparent border border-slate-600 cursor-pointer">
+                </div>
+            </div>
+
+            <div class="flex items-center gap-1 text-xs">
+                <button onclick="insertCadSymbol('Ø')" class="sym-btn px-2 py-0.5 bg-slate-950 hover:bg-slate-800 border cad-border rounded text-indigo-300 font-mono text-xs font-bold">Ø</button>
+                <button onclick="insertCadSymbol('R')" class="sym-btn px-2 py-0.5 bg-slate-950 hover:bg-slate-800 border cad-border rounded text-indigo-300 font-mono text-xs font-bold">R</button>
+                <button onclick="insertCadSymbol('°')" class="sym-btn px-2 py-0.5 bg-slate-950 hover:bg-slate-800 border cad-border rounded text-indigo-300 font-mono text-xs font-bold">°</button>
+                <button onclick="insertCadSymbol('M10')" class="sym-btn px-2 py-0.5 bg-slate-950 hover:bg-slate-800 border cad-border rounded text-indigo-300 font-mono text-xs font-bold">M</button>
+            </div>
+
+            <div class="flex items-center gap-1 bg-slate-950/80 px-2 py-0.5 rounded border cad-border">
+                <span class="text-[11px] text-slate-400 font-semibold"><i class="fa-solid fa-magnifying-glass"></i> Zoom:</span>
+                <button id="zoomOutBtn" class="w-5 h-5 bg-slate-800 hover:bg-slate-700 text-white rounded font-bold text-xs flex items-center justify-center">-</button>
+                <span id="zoomLevelText" class="text-[11px] font-mono font-bold text-indigo-300 min-w-[34px] text-center">100%</span>
+                <button id="zoomInBtn" class="w-5 h-5 bg-slate-800 hover:bg-slate-700 text-white rounded font-bold text-xs flex items-center justify-center">+</button>
+                <button id="zoomResetBtn" class="text-[10px] text-indigo-400 hover:underline font-bold ml-0.5">Fit</button>
+            </div>
+        </div>
+
+        <div id="canvasScrollContainer" class="canvas-scroll-container relative w-full flex-grow overflow-auto rounded-lg border cad-border bg-slate-950 shadow-inner flex items-center justify-center p-4">
+            <div id="canvasWrapper" class="relative transition-transform duration-100 origin-center bg-slate-900 shadow-2xl border border-slate-700">
+                <canvas id="cadCanvas" width="1188" height="840" class="block"></canvas>
+                
+                <div id="cadHud" class="absolute top-2 left-2 bg-slate-900/90 border border-indigo-500/50 rounded px-2 py-0.5 text-[10px] font-mono shadow text-indigo-300 pointer-events-none flex items-center gap-2 z-10">
+                    <span>X: <span id="hudX">0</span>, Y: <span id="hudY">0</span></span>
+                    <span>Lệnh: <span id="hudCmd" class="text-emerald-400 font-bold">SELECT/MOVE</span></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="w-full bg-slate-900 rounded-lg border cad-border p-1.5 shadow-lg flex flex-col gap-1 shrink-0">
+            <div class="flex items-center justify-between px-1 text-[10px] text-slate-400 border-b border-slate-800 pb-0.5">
+                <span class="font-mono flex items-center gap-1"><i class="fa-solid fa-terminal text-indigo-400"></i> BẢNG ĐIỀU KHIỂN NỘP BÀI (Click chuột phải để xóa trên PC | Nút "Xóa chọn" trên Phone)</span>
+                <div class="flex items-center gap-3">
+                    <span id="objCountText" class="text-indigo-300 font-mono">Đối tượng: 0</span>
+                    <button id="clearBtn" class="text-rose-400 hover:underline font-semibold flex items-center gap-1">
+                        <i class="fa-solid fa-trash-can"></i> Xóa hết
+                    </button>
+                    <button id="saveBtn" class="text-emerald-400 hover:underline font-semibold flex items-center gap-1 text-xs font-bold bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800">
+                        <i class="fa-solid fa-cloud-arrow-down"></i> Tải bản vẽ nộp thầy
+                    </button>
+                </div>
+            </div>
+            
+            <div id="cmdLog" class="font-mono text-[11px] text-slate-300 bg-slate-950 px-2 py-1 rounded h-9 overflow-y-auto flex flex-col justify-end">
+                <div class="text-indigo-400">> Hoàn thành bản vẽ, nhấn "Tải bản vẽ nộp thầy" để lưu file ảnh PNG về điện thoại/máy tính và gửi nộp.</div>
+            </div>
+        </div>
+    </main>
+
+    <div id="textModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="bg-slate-900 border cad-border rounded-xl p-4 max-w-sm w-full mx-3 shadow-2xl">
+            <h3 id="modalPromptTitle" class="text-xs font-bold text-indigo-400 mb-2 flex items-center gap-1.5"><i class="fa-solid fa-pen-nib"></i> Nhập Khung Tên / Văn Bản</h3>
+            <input type="text" id="textInput" placeholder="VD: M10x1.5, Ø40, Nguyễn Văn A..." class="w-full bg-slate-950 border cad-border rounded-lg px-2.5 py-1.5 text-xs font-mono text-white outline-none focus:ring-2 focus:ring-indigo-500 mb-3">
+            <div class="flex justify-end gap-2">
+                <button id="textCancelBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1 rounded-lg text-xs font-semibold">Hủy</button>
+                <button id="textOkBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-lg text-xs font-semibold">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="customModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-slate-900 border cad-border rounded-xl p-4 max-w-sm w-full mx-3 shadow-2xl transform scale-95 transition-transform duration-300" id="modalContent">
+            <div class="text-center">
+                <div id="modalIcon" class="w-8 h-8 rounded-full bg-indigo-900/50 text-indigo-400 flex items-center justify-center mx-auto mb-2 text-sm border border-indigo-500/30">
+                    <i class="fa-solid fa-check"></i>
+                </div>
+                <h3 id="modalTitle" class="text-xs font-bold text-white mb-1">Thông báo CAD</h3>
+                <p id="modalMessage" class="text-[11px] text-slate-400 mb-3">Nội dung thông báo.</p>
+                <div id="modalButtons" class="flex justify-center gap-2">
+                    <button id="modalOkBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg text-xs font-semibold transition w-full">Đồng ý</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('cadCanvas');
+        const ctx = canvas.getContext('2d');
+        const canvasWrapper = document.getElementById('canvasWrapper');
+        const canvasScrollContainer = document.getElementById('canvasScrollContainer');
+
+        let isDrawing = false;
+        let currentTool = 'select'; 
+        let startX = 0;
+        let startY = 0;
+        let snapshot = null;
+        let textCoords = { x: 0, y: 0 };
+        let currentZoom = 1.0;
+
+        let cadElements = [];
+        let selectedElementIndex = null;
+        let isDraggingObject = false;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+
+        // Dữ liệu mặc định Khung tên chuẩn TCVN 7285:2003
+        let titleBlockData = {
+            '1': 'NGƯỜI VẼ',
+            '1_prime': 'Nguyễn Văn A',
+            '1_double': '16/10/2026',
+            '2': 'KIỂM TRA',
+            '2_prime': 'Thầy Hùng',
+            '2_double': '20/10/2026',
+            '3': 'ĐẠI HỌC KỸ THUẬT - LỚP KTPM1',
+            '4': 'BẢN VẼ CHI TIẾT MÁY',
+            '5': 'THÉP CT3',
+            '6': '1:1',
+            '7': 'BTL-01'
+        };
+
+        let editingTitleField = null;
+        const cadFontSize = document.getElementById('cadFontSize');
+
+        const hudX = document.getElementById('hudX');
+        const hudY = document.getElementById('hudY');
+        const hudCmd = document.getElementById('hudCmd');
+        const cmdLog = document.getElementById('cmdLog');
+        const objCountText = document.getElementById('objCountText');
+
+        function logCmd(msg, type = 'info') {
+            const div = document.createElement('div');
+            div.textContent = `> ${msg}`;
+            if (type === 'error') div.className = 'text-rose-400';
+            else if (type === 'success') div.className = 'text-emerald-400';
+            cmdLog.appendChild(div);
+            cmdLog.scrollTop = cmdLog.scrollHeight;
+        }
+
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+
+        function redrawAll() {
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (document.getElementById('gridToggle').checked) {
+                drawCadGrid();
+            }
+
+            drawTCVNBorderAndTitleBlock();
+
+            cadElements.forEach((el, index) => {
+                ctx.save();
+                ctx.strokeStyle = el.color;
+                ctx.fillStyle = el.color;
+                applyCadLineStyle(el.lineType, el.scale);
+
+                if (el.type === 'line') {
+                    ctx.beginPath();
+                    ctx.moveTo(el.x1, el.y1);
+                    ctx.lineTo(el.x2, el.y2);
+                    ctx.stroke();
+                } else if (el.type === 'rect') {
+                    ctx.strokeRect(el.x, el.y, el.w, el.h);
+                } else if (el.type === 'circle') {
+                    ctx.beginPath();
+                    ctx.arc(el.x, el.y, el.r, 0, 2 * Math.PI);
+                    ctx.stroke();
+                } else if (el.type === 'dim') {
+                    ctx.beginPath();
+                    ctx.moveTo(el.x1, el.y1);
+                    ctx.lineTo(el.x2, el.y2);
+                    ctx.stroke();
+                    drawDimensionArrow(el.x1, el.y1, el.x2, el.y2, el.color);
+                } else if (el.type === 'text') {
+                    const fSize = el.fontSize || 16;
+                    ctx.font = `bold ${fSize}px Inter, monospace`;
+                    ctx.fillText(el.text, el.x, el.y);
+                }
+
+                if (index === selectedElementIndex) {
+                    ctx.strokeStyle = '#38bdf8';
+                    ctx.lineWidth = 1.5;
+                    ctx.setLineDash([4, 4]);
+                    const pad = 6;
+                    if (el.type === 'rect') {
+                        ctx.strokeRect(el.x - pad, el.y - pad, el.w + pad * 2, el.h + pad * 2);
+                    } else if (el.type === 'circle') {
+                        ctx.strokeRect(el.x - el.r - pad, el.y - el.r - pad, (el.r * 2) + pad * 2, (el.r * 2) + pad * 2);
+                    } else if (el.type === 'text') {
+                        const fSize = el.fontSize || 16;
+                        ctx.strokeRect(el.x - pad, el.y - fSize - 2, (el.text.length * (fSize * 0.6)) + pad * 2, fSize + pad * 2);
+                    } else if (el.type === 'line' || el.type === 'dim') {
+                        ctx.strokeRect(Math.min(el.x1, el.x2) - pad, Math.min(el.y1, el.y2) - pad, Math.abs(el.x2 - el.x1) + pad * 2, Math.abs(el.y2 - el.y1) + pad * 2);
+                    }
+                }
+                ctx.restore();
+            });
+
+            objCountText.textContent = `Đối tượng: ${cadElements.length}`;
+        }
+
+        function drawCadGrid() {
+            const step = 40;
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([]);
+            for (let x = 0; x < canvas.width; x += step) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += step) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+        }
+
+        // Vẽ Khung tên chuẩn TCVN 7285:2003 chuẩn xác theo tài liệu
+        function drawTCVNBorderAndTitleBlock() {
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([]);
+            ctx.strokeRect(20, 20, w - 40, h - 40);
+
+            const tbW = 350;
+            const tbH = 80;
+            const startX = w - tbW - 20;
+            const startY = h - tbH - 20;
+
+            ctx.save();
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(startX, startY, tbW, tbH);
+
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(startX, startY, tbW, tbH);
+
+            const row1H = 26;
+            const row2H = 26;
+
+            ctx.beginPath();
+            ctx.moveTo(startX, startY + row1H);
+            ctx.lineTo(startX + tbW, startY + row1H);
+            ctx.moveTo(startX, startY + row1H + row2H);
+            ctx.lineTo(startX + tbW, startY + row1H + row2H);
+            ctx.stroke();
+
+            const col1 = startX + 50;
+            const col2 = col1 + 75;
+            const col3 = col2 + 40;
+            const col4 = startX + 260;
+            const col5 = startX + 310;
+
+            ctx.beginPath();
+            ctx.moveTo(col1, startY);
+            ctx.lineTo(col1, startY + row1H + row2H);
+            ctx.moveTo(col2, startY);
+            ctx.lineTo(col2, startY + row1H + row2H);
+            ctx.moveTo(col3, startY);
+            ctx.lineTo(col3, startY + row1H + row2H);
+            ctx.moveTo(col4, startY + row1H + row2H);
+            ctx.lineTo(col4, startY + tbH);
+            ctx.moveTo(col5, startY + row1H + row2H);
+            ctx.lineTo(col5, startY + tbH);
+            ctx.stroke();
+
+            ctx.font = '11px Inter, sans-serif';
+            ctx.fillStyle = '#38bdf8';
+
+            ctx.fillText(titleBlockData['1'], startX + 5, startY + 16);
+            ctx.fillText(titleBlockData['1_prime'], col1 + 5, startY + 16);
+            ctx.fillText(titleBlockData['1_double'], col2 + 5, startY + 16);
+
+            ctx.fillText(titleBlockData['2'], startX + 5, startY + row1H + 16);
+            ctx.fillText(titleBlockData['2_prime'], col1 + 5, startY + row1H + 16);
+            ctx.fillText(titleBlockData['2_double'], col2 + 5, startY + row1H + 16);
+
+            ctx.fillText(titleBlockData['3'], startX + 5, startY + row1H + row2H + 18);
+
+            ctx.font = 'bold 13px Inter, sans-serif';
+            ctx.fillStyle = '#f8fafc';
+            ctx.fillText(titleBlockData['4'], col3 + 15, startY + 45);
+
+            ctx.font = '11px Inter, sans-serif';
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillText(titleBlockData['5'], col3 + 15, startY + row1H + row2H + 18);
+            ctx.fillText(titleBlockData['6'], col4 + 5, startY + row1H + row2H + 18);
+            ctx.fillText(titleBlockData['7'], col5 + 5, startY + row1H + row2H + 18);
+
+            window.titleBlockBounds = { startX, startY, tbW, tbH, col1, col2, col3, col4, col5, row1H, row2H };
+            ctx.restore();
+        }
+
+        function applyCadLineStyle(type, scale) {
+            switch(type) {
+                case 'solid-thin':
+                    ctx.setLineDash([]);
+                    ctx.lineWidth = 1 * scale;
+                    break;
+                case 'solid-thick':
+                    ctx.setLineDash([]);
+                    ctx.lineWidth = 3.5 * scale;
+                    break;
+                case 'dashed':
+                    ctx.setLineDash([8 * scale, 5 * scale]);
+                    ctx.lineWidth = 2 * scale;
+                    break;
+                case 'dash-dot':
+                    ctx.setLineDash([12 * scale, 4 * scale, 2 * scale, 4 * scale]);
+                    ctx.lineWidth = 1.5 * scale;
+                    break;
+                default:
+                    ctx.setLineDash([]);
+                    ctx.lineWidth = 2 * scale;
+            }
+        }
+
+        function drawDimensionArrow(x1, y1, x2, y2, color) {
+            const angle = Math.atan2(y2 - y1, x2 - x1);
+            const headLength = 10;
+            ctx.fillStyle = color;
+            
+            ctx.save();
+            ctx.translate(x1, y1);
+            ctx.rotate(angle);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(headLength, 4);
+            ctx.lineTo(headLength, -4);
+            ctx.fill();
+            ctx.restore();
+
+            ctx.save();
+            ctx.translate(x2, y2);
+            ctx.rotate(angle + Math.PI);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(headLength, 4);
+            ctx.lineTo(headLength, -4);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function fitToScreen() {
+            const containerW = canvasScrollContainer.clientWidth - 30;
+            const containerH = canvasScrollContainer.clientHeight - 30;
+            const scaleX = containerW / canvas.width;
+            const scaleY = containerH / canvas.height;
+            const bestScale = Math.min(scaleX, scaleY, 1.2);
+            updateZoom(Math.max(0.3, bestScale));
+        }
+
+        redrawAll();
+        window.addEventListener('load', fitToScreen);
+        window.addEventListener('resize', fitToScreen);
+
+        const paperSizeSelect = document.getElementById('paperSize');
+        const cadColor = document.getElementById('cadColor');
+        const cadLineType = document.getElementById('cadLineType');
+        const scaleSelect = document.getElementById('scaleSelect');
+        const toolButtons = document.querySelectorAll('.tool-btn');
+        const clearBtn = document.getElementById('clearBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+        const gridToggle = document.getElementById('gridToggle');
+
+        paperSizeSelect.addEventListener('change', () => {
+            if (paperSizeSelect.value === 'A4') {
+                canvas.width = 840;
+                canvas.height = 594;
+            } else if (paperSizeSelect.value === 'A3') {
+                canvas.width = 1188;
+                canvas.height = 840;
+            } else if (paperSizeSelect.value === 'A2') {
+                canvas.width = 1680;
+                canvas.height = 1188;
+            }
+            cadElements = [];
+            selectedElementIndex = null;
+            redrawAll();
+            fitToScreen();
+            logCmd(`Đã chuyển khổ giấy sang ${paperSizeSelect.value}`, 'success');
+        });
+
+        gridToggle.addEventListener('change', redrawAll);
+
+        toolButtons.forEach(btn => {
+            if(btn.id === 'deleteSelectedBtn') return;
+            btn.addEventListener('click', () => {
+                toolButtons.forEach(b => {
+                    if(b.id === 'deleteSelectedBtn') return;
+                    b.classList.remove('bg-indigo-600', 'text-white');
+                    b.classList.add('text-slate-300', 'hover:bg-slate-800');
+                });
+                btn.classList.add('bg-indigo-600', 'text-white');
+                btn.classList.remove('text-slate-300', 'hover:bg-slate-800');
+
+                if (btn.id === 'toolSelect') currentTool = 'select';
+                else if (btn.id === 'toolLine') currentTool = 'line';
+                else if (btn.id === 'toolRect') currentTool = 'rect';
+                else if (btn.id === 'toolCircle') currentTool = 'circle';
+                else if (btn.id === 'toolDim') currentTool = 'dim';
+                else if (btn.id === 'toolText') currentTool = 'text';
+
+                hudCmd.textContent = currentTool.toUpperCase();
+            });
+        });
+
+        function deleteSelectedObject() {
+            if (selectedElementIndex !== null && selectedElementIndex >= 0 && selectedElementIndex < cadElements.length) {
+                cadElements.splice(selectedElementIndex, 1);
+                selectedElementIndex = null;
+                redrawAll();
+                logCmd('Đã xóa đối tượng đang chọn khỏi bản vẽ.', 'success');
+            } else {
+                logCmd('Chưa chọn đối tượng nào. Hãy click chọn đối tượng trước khi xóa!', 'error');
+            }
+        }
+
+        deleteSelectedBtn.addEventListener('click', deleteSelectedObject);
+
+        window.insertCadSymbol = function(sym) {
+            currentTool = 'text';
+            toolButtons.forEach(b => {
+                if(b.id === 'deleteSelectedBtn') return;
+                b.classList.remove('bg-indigo-600', 'text-white');
+                b.classList.add('text-slate-300', 'hover:bg-slate-800');
+                if (b.id === 'toolText') {
+                    b.classList.add('bg-indigo-600', 'text-white');
+                    b.classList.remove('text-slate-300', 'hover:bg-slate-800');
+                }
+            });
+            textCoords = { x: canvas.width / 2, y: canvas.height / 2 };
+            document.getElementById('modalPromptTitle').innerHTML = '<i class="fa-solid fa-pen-nib"></i> Nhập Ký Hiệu CAD';
+            document.getElementById('textInput').value = sym;
+            document.getElementById('textModal').classList.remove('hidden');
+            document.getElementById('textInput').focus();
+        };
+
+        function getCanvasCoordinates(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            return {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
+        }
+
+        function checkTitleBlockClick(x, y) {
+            if (!window.titleBlockBounds) return false;
+            const b = window.titleBlockBounds;
+            if (x >= b.startX && x <= b.startX + b.tbW && y >= b.startY && y <= b.startY + b.tbH) {
+                if (y < b.startY + b.row1H) {
+                    if (x < b.col1) editingTitleField = '1';
+                    else if (x < b.col2) editingTitleField = '1_prime';
+                    else editingTitleField = '1_double';
+                } else if (y < b.startY + b.row1H + b.row2H) {
+                    if (x < b.col1) editingTitleField = '2';
+                    else if (x < b.col2) editingTitleField = '2_prime';
+                    else editingTitleField = '2_double';
+                } else {
+                    if (x < b.col3) editingTitleField = '3';
+                    else if (x < b.col4) {
+                        if (y < b.startY + b.row1H + b.row2H + 14) editingTitleField = '4';
+                        else editingTitleField = '5';
+                    }
+                    else if (x < b.col5) editingTitleField = '6';
+                    else editingTitleField = '7';
+                }
+
+                document.getElementById('modalPromptTitle').innerHTML = `<i class="fa-solid fa-pen-to-square"></i> Sửa Khung Tên [Ô ${editingTitleField.toUpperCase()}]`;
+                document.getElementById('textInput').value = titleBlockData[editingTitleField] || '';
+                document.getElementById('textModal').classList.remove('hidden');
+                document.getElementById('textInput').focus();
+                return true;
+            }
+            return false;
+        }
+
+        function hitTest(el, mx, my) {
+            const tolerance = 12;
+            if (el.type === 'rect') {
+                return mx >= el.x - tolerance && mx <= el.x + el.w + tolerance &&
+                       my >= el.y - tolerance && my <= el.y + el.h + tolerance;
+            } else if (el.type === 'circle') {
+                const dist = Math.sqrt(Math.pow(mx - el.x, 2) + Math.pow(my - el.y, 2));
+                return Math.abs(dist - el.r) <= tolerance || dist <= el.r;
+            } else if (el.type === 'text') {
+                const fSize = el.fontSize || 16;
+                return mx >= el.x - tolerance && mx <= el.x + (el.text.length * fSize * 0.7) + tolerance &&
+                       my >= el.y - fSize - tolerance && my <= el.y + tolerance;
+            } else if (el.type === 'line' || el.type === 'dim') {
+                return distToSegment({x: mx, y: my}, {x: el.x1, y: el.y1}, {x: el.x2, y: el.y2}) <= tolerance;
+            }
+            return false;
+        }
+
+        function distToSegment(p, p1, p2) {
+            const l2 = Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2);
+            if (l2 === 0) return Math.sqrt(Math.pow(p.x - p1.x, 2) + Math.pow(p.y - p1.y, 2));
+            let t = ((p.x - p1.x) * (p2.x - p1.x) + (p.y - p1.y) * (p2.y - p1.y)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            return Math.sqrt(Math.pow(p.x - (p1.x + t * (p2.x - p1.x)), 2) + Math.pow(p.y - (p1.y + t * (p2.y - p1.y)), 2));
+        }
+
+        function startAction(e) {
+            const coords = getCanvasCoordinates(e);
+            startX = coords.x;
+            startY = coords.y;
+
+            if (checkTitleBlockClick(startX, startY)) return;
+
+            // Click chuột phải (e.button === 2) để xóa đối tượng trên máy tính
+            if (e.button === 2) {
+                e.preventDefault();
+                for (let i = cadElements.length - 1; i >= 0; i--) {
+                    if (hitTest(cadElements[i], startX, startY)) {
+                        cadElements.splice(i, 1);
+                        selectedElementIndex = null;
+                        redrawAll();
+                        logCmd('Đã xóa đối tượng bằng chuột phải.', 'success');
+                        break;
+                    }
+                }
+                return;
+            }
+
+            if (currentTool === 'select') {
+                selectedElementIndex = null;
+                for (let i = cadElements.length - 1; i >= 0; i--) {
+                    if (hitTest(cadElements[i], startX, startY)) {
+                        selectedElementIndex = i;
+                        isDraggingObject = true;
+                        const el = cadElements[i];
+                        if (el.type === 'rect' || el.type === 'text' || el.type === 'circle') {
+                            dragOffsetX = startX - el.x;
+                            dragOffsetY = startY - el.y;
+                        }
+                        break;
+                    }
+                }
+                redrawAll();
+                return;
+            }
+
+            if (currentTool === 'text') {
+                textCoords = { x: startX, y: startY };
+                editingTitleField = null;
+                document.getElementById('modalPromptTitle').innerHTML = '<i class="fa-solid fa-pen-nib"></i> Nhập Văn Bản Kỹ Thuật';
+                document.getElementById('textInput').value = '';
+                document.getElementById('textModal').classList.remove('hidden');
+                document.getElementById('textInput').focus();
+                return;
+            }
+
+            isDrawing = true;
+            snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        }
+
+        function drawAction(e) {
+            const coords = getCanvasCoordinates(e);
+            const currentX = coords.x;
+            const currentY = coords.y;
+
+            hudX.textContent = Math.round(currentX);
+            hudY.textContent = Math.round(currentY);
+
+            if (currentTool === 'select' && isDraggingObject && selectedElementIndex !== null) {
+                e.preventDefault();
+                const el = cadElements[selectedElementIndex];
+                const dx = currentX - startX;
+                const dy = currentY - startY;
+
+                if (el.type === 'rect' || el.type === 'text' || el.type === 'circle') {
+                    el.x = currentX - dragOffsetX;
+                    el.y = currentY - dragOffsetY;
+                } else if (el.type === 'line' || el.type === 'dim') {
+                    el.x1 += dx;
+                    el.y1 += dy;
+                    el.x2 += dx;
+                    el.y2 += dy;
+                }
+                startX = currentX;
+                startY = currentY;
+                redrawAll();
+                return;
+            }
+
+            if (!isDrawing) return;
+            e.preventDefault();
+
+            ctx.putImageData(snapshot, 0, 0);
+            ctx.strokeStyle = cadColor.value;
+            applyCadLineStyle(cadLineType.value, parseFloat(scaleSelect.value));
+
+            if (currentTool === 'line' || currentTool === 'dim') {
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(currentX, currentY);
+                ctx.stroke();
+                if (currentTool === 'dim') {
+                    drawDimensionArrow(startX, startY, currentX, currentY, cadColor.value);
+                }
+            } else if (currentTool === 'rect') {
+                ctx.strokeRect(startX, startY, currentX - startX, currentY - startY);
+            } else if (currentTool === 'circle') {
+                const radius = Math.sqrt(Math.pow(currentX - startX, 2) + Math.pow(currentY - startY, 2));
+                ctx.beginPath();
+                ctx.arc(startX, startY, radius, 0, 2 * Math.PI);
+                ctx.stroke();
+            }
+        }
+
+        function stopAction(e) {
+            if (currentTool === 'select') {
+                isDraggingObject = false;
+                return;
+            }
+
+            if (!isDrawing) return;
+            isDrawing = false;
+
+            const coords = getCanvasCoordinates(e || window.event);
+            const endX = coords.x;
+            const endY = coords.y;
+
+            if (currentTool === 'line' || currentTool === 'dim') {
+                cadElements.push({
+                    type: currentTool,
+                    x1: startX, y1: startY,
+                    x2: endX, y2: endY,
+                    color: cadColor.value,
+                    lineType: cadLineType.value,
+                    scale: parseFloat(scaleSelect.value)
+                });
+            } else if (currentTool === 'rect') {
+                cadElements.push({
+                    type: 'rect',
+                    x: startX, y: startY,
+                    w: endX - startX, h: endY - startY,
+                    color: cadColor.value,
+                    lineType: cadLineType.value,
+                    scale: parseFloat(scaleSelect.value)
+                });
+            } else if (currentTool === 'circle') {
+                const radius = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+                cadElements.push({
+                    type: 'circle',
+                    x: startX, y: startY,
+                    r: radius,
+                    color: cadColor.value,
+                    lineType: cadLineType.value,
+                    scale: parseFloat(scaleSelect.value)
+                });
+            }
+            redrawAll();
+        }
+
+        canvas.addEventListener('mousedown', startAction);
+        canvas.addEventListener('mousemove', drawAction);
+        canvas.addEventListener('mouseup', stopAction);
+        canvas.addEventListener('mouseleave', stopAction);
+        canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+        canvas.addEventListener('touchstart', startAction);
+        canvas.addEventListener('touchmove', drawAction);
+        canvas.addEventListener('touchend', stopAction);
+
+        // Hỗ trợ phím Delete / Backspace để xóa đối tượng trên điện thoại/máy tính
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'SELECT') {
+                    deleteSelectedObject();
+                }
+            }
+        });
+
+        document.getElementById('textOkBtn').addEventListener('click', () => {
+            const val = document.getElementById('textInput').value;
+            if (editingTitleField) {
+                titleBlockData[editingTitleField] = val;
+                redrawAll();
+                logCmd(`Đã cập nhật khung tên [Ô ${editingTitleField.toUpperCase()}]`, 'success');
+                editingTitleField = null;
+            } else if (val) {
+                cadElements.push({
+                    type: 'text',
+                    text: val,
+                    x: textCoords.x,
+                    y: textCoords.y,
+                    color: cadColor.value,
+                    lineType: 'solid-thin',
+                    scale: 1,
+                    fontSize: parseInt(cadFontSize.value) || 16
+                });
+                redrawAll();
+                logCmd(`Đã thêm chữ: "${val}" (Cỡ ${cadFontSize.value}px)`, 'success');
+            }
+            document.getElementById('textModal').classList.add('hidden');
+        });
+
+        document.getElementById('textCancelBtn').addEventListener('click', () => {
+            editingTitleField = null;
+            document.getElementById('textModal').classList.add('hidden');
+        });
+
+        function updateZoom(newZoom) {
+            currentZoom = Math.max(0.2, Math.min(3.0, newZoom));
+            canvasWrapper.style.transform = `scale(${currentZoom})`;
+            document.getElementById('zoomLevelText').textContent = `${Math.round(currentZoom * 100)}%`;
+        }
+
+        document.getElementById('zoomInBtn').addEventListener('click', () => updateZoom(currentZoom + 0.15));
+        document.getElementById('zoomOutBtn').addEventListener('click', () => updateZoom(currentZoom - 0.15));
+        document.getElementById('zoomResetBtn').addEventListener('click', fitToScreen);
+
+        clearBtn.addEventListener('click', () => {
+            showModal('Xác nhận New File', 'Em có muốn khởi tạo bản vẽ mới không?', true, () => {
+                cadElements = [];
+                selectedElementIndex = null;
+                redrawAll();
+                logCmd('Đã khởi tạo bản vẽ mới.', 'success');
+            });
+        });
+
+        // Nút lưu và tải xuống bản vẽ về điện thoại / máy tính để nộp cho thầy
+        saveBtn.addEventListener('click', () => {
+            redrawAll();
+            const link = document.createElement('a');
+            const studentName = (titleBlockData['1_prime'] || 'hoc-sinh').replace(/\s+/g, '-');
+            link.download = `ban-ve-cad-${studentName}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            logCmd('Đã tải thành công bản vẽ về máy để nộp cho thầy!', 'success');
+            showModal('Tải Bản Vẽ Thành Công!', 'File ảnh bản vẽ (PNG) đã được lưu về điện thoại/máy tính của em. Em có thể gửi file này cho thầy để nộp bài tập.');
+        });
+
+        function showModal(title, message, isConfirm = false, onConfirm = null) {
+            const modal = document.getElementById('customModal');
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalMessage').textContent = message;
+            const modalButtons = document.getElementById('modalButtons');
+
+            if (isConfirm) {
+                modalButtons.innerHTML = `
+                    <button id="mCancel" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-semibold w-1/2">Hủy</button>
+                    <button id="mConfirm" class="bg-rose-500 hover:bg-rose-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold w-1/2">Xác nhận</button>
+                `;
+                document.getElementById('mCancel').onclick = () => modal.classList.add('hidden');
+                document.getElementById('mConfirm').onclick = () => { onConfirm(); modal.classList.add('hidden'); };
+            } else {
+                modalButtons.innerHTML = `<button id="mOk" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg text-xs font-semibold w-full">Đồng ý</button>`;
+                document.getElementById('mOk').onclick = () => modal.classList.add('hidden');
+            }
+
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        }
+    </script>
+</body>
+</html>
